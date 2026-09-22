@@ -185,6 +185,20 @@ pub async fn set_pick(path: String, pick: bool) -> Result<(), String> {
     update_flags(&path, |f| f.pick = pick)
 }
 
+/// Sets rating and pick together in a single read-modify-write. Picked and
+/// rejected must never both be true, and since they share one XMP sidecar,
+/// firing set_rating and set_pick as two separate, unsynchronized calls to
+/// clear one while setting the other is a real race - whichever write lands
+/// last can silently clobber the other's change. This command is the only
+/// safe way to change both at once.
+#[tauri::command]
+pub async fn set_rating_and_pick(path: String, rating: i8, pick: bool) -> Result<(), String> {
+    update_flags(&path, |f| {
+        f.rating = rating;
+        f.pick = pick;
+    })
+}
+
 #[tauri::command]
 pub async fn list_directory(path: Option<String>) -> Result<DirListing, String> {
     let dir = match path {

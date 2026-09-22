@@ -8,6 +8,7 @@ import {
   scanFolder,
   setPick as apiSetPick,
   setRating as apiSetRating,
+  setRatingAndPick as apiSetRatingAndPick,
 } from "../api";
 import type { PhotoInfo, ScanProgress } from "../types";
 
@@ -104,18 +105,37 @@ export function usePhotoLibrary() {
     }
   }, [photos]);
 
+  // Rating and pick share one XMP sidecar, so any change that touches both
+  // fields at once (rejecting a picked photo, picking a rejected one) must
+  // go through one atomic write - never two separate setRating/setPick
+  // calls, which race on the same read-modify-write and can leave a photo
+  // marked both picked and rejected.
+  const setRatingAndPick = useCallback(async (path: string, rating: number, pick: boolean) => {
+    const previous = photos[path];
+    setPhotos((prev) => (prev[path] ? { ...prev, [path]: { ...prev[path], rating, pick } } : prev));
+    try {
+      await apiSetRatingAndPick(path, rating, pick);
+    } catch (e) {
+      if (previous) {
+        setPhotos((prev) =>
+          prev[path] ? { ...prev, [path]: { ...prev[path], rating: previous.rating, pick: previous.pick } } : prev,
+        );
+      }
+      setError(`Couldn't save rating/pick for ${path.split(/[\\/]/).pop()}: ${e}`);
+    }
+  }, [photos]);
+
   const rejectPhoto = useCallback(
     (path: string) => {
       const current = photos[path];
       if (!current) return;
       if (current.rating === -1) {
-        void setRating(path, 0);
+        void setRatingAndPick(path, 0, current.pick);
       } else {
-        void setRating(path, -1);
-        if (current.pick) void setPick(path, false);
+        void setRatingAndPick(path, -1, false);
       }
     },
-    [photos, setRating, setPick],
+    [photos, setRatingAndPick],
   );
 
   const pickPhoto = useCallback(
@@ -123,12 +143,10 @@ export function usePhotoLibrary() {
       const current = photos[path];
       if (!current) return;
       const nextPick = !current.pick;
-      void setPick(path, nextPick);
-      if (nextPick && current.rating === -1) {
-        void setRating(path, 0);
-      }
+      const nextRating = nextPick && current.rating === -1 ? 0 : current.rating;
+      void setRatingAndPick(path, nextRating, nextPick);
     },
-    [photos, setPick, setRating],
+    [photos, setRatingAndPick],
   );
 
   const moveGroupsOrPhotos = useCallback(
@@ -190,6 +208,7 @@ export function usePhotoLibrary() {
     applyGrouping,
     setRating,
     setPick,
+    setRatingAndPick,
     rejectPhoto,
     pickPhoto,
     moveGroupsOrPhotos,

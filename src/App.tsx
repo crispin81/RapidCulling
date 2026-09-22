@@ -41,7 +41,7 @@ export default function App() {
     openFolder,
     applyGrouping,
     setRating,
-    setPick,
+    setRatingAndPick,
     rejectPhoto,
     pickPhoto,
     moveGroupsOrPhotos,
@@ -186,8 +186,8 @@ export default function App() {
             // which would give inconsistent results across mixed-state
             // photos - "mark these as picks" should be unambiguous.
             for (const path of targets) {
-              void setPick(path, true);
-              if (photos[path]?.rating === -1) void setRating(path, 0);
+              const rating = photos[path]?.rating === -1 ? 0 : (photos[path]?.rating ?? 0);
+              void setRatingAndPick(path, rating, true);
             }
           } else {
             pickPhoto(targets[0]);
@@ -195,10 +195,7 @@ export default function App() {
           return;
         case "x":
           if (targets.length > 1) {
-            for (const path of targets) {
-              void setRating(path, -1);
-              if (photos[path]?.pick) void setPick(path, false);
-            }
+            for (const path of targets) void setRatingAndPick(path, -1, false);
           } else {
             rejectPhoto(targets[0]);
           }
@@ -270,7 +267,7 @@ export default function App() {
     selectedPaths,
     photos,
     setRating,
-    setPick,
+    setRatingAndPick,
     pickPhoto,
     rejectPhoto,
   ]);

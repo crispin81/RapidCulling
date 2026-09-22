@@ -16,7 +16,8 @@
         "title": "RapidCulling",
         "width": 1400,
         "height": 900,
-        "decorations": false
+        "decorations": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

@@ -22,6 +22,10 @@ export function setPick(path: string, pick: boolean): Promise<void> {
   return invoke("set_pick", { path, pick });
 }
 
+export function setRatingAndPick(path: string, rating: number, pick: boolean): Promise<void> {
+  return invoke("set_rating_and_pick", { path, rating, pick });
+}
+
 export function listDirectory(path?: string): Promise<DirListing> {
   return invoke("list_directory", { path: path ?? null });
 }

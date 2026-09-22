@@ -18,6 +18,7 @@ pub fn run() {
             commands::get_full_preview,
             commands::set_rating,
             commands::set_pick,
+            commands::set_rating_and_pick,
             commands::list_directory,
             commands::list_volumes,
             commands::create_folder,
