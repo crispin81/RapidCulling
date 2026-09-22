@@ -1,0 +1,133 @@
+import { Check, Star, X } from "lucide-react";
+import DirectoryBrowser from "./DirectoryBrowser";
+import FavouritesPanel from "./FavouritesPanel";
+import type { PhotoFilters, PickFilterState } from "../types";
+
+interface Props {
+  openFolderPath: string | null;
+  onOpenFolder: (path: string) => void;
+  onDropPhoto: (photoPaths: string[], destFolder: string) => void;
+  favourites: string[];
+  onTogglePin: (path: string) => void;
+  filters: PhotoFilters;
+  onFiltersChange: (filters: PhotoFilters) => void;
+  similarityPercent: number;
+  onSimilarityPercentChange: (similarityPercent: number) => void;
+  groupingStale: boolean;
+  onUpdateGrouping: () => void;
+}
+
+export default function LibrarySidebar({
+  openFolderPath,
+  onOpenFolder,
+  onDropPhoto,
+  favourites,
+  onTogglePin,
+  filters,
+  onFiltersChange,
+  similarityPercent,
+  onSimilarityPercentChange,
+  groupingStale,
+  onUpdateGrouping,
+}: Props) {
+  function toggleMinStars(star: number) {
+    onFiltersChange({ ...filters, minStars: filters.minStars === star ? 0 : star });
+  }
+
+  function togglePickState(state: PickFilterState) {
+    onFiltersChange({ ...filters, pickState: filters.pickState === state ? "any" : state });
+  }
+  return (
+    <aside className="sidebar">
+      <h3>Library</h3>
+      {openFolderPath && (
+        <p className="sidebar__root" title={openFolderPath}>Culling: {openFolderPath}</p>
+      )}
+      <p className="sidebar__hint">Double-click (or ⏵) a folder to cull it. Drag a photo onto a folder to move it there.</p>
+      <DirectoryBrowser
+        openFolderPath={openFolderPath}
+        onOpenFolder={onOpenFolder}
+        onDropPhoto={onDropPhoto}
+        favourites={favourites}
+        onTogglePin={onTogglePin}
+      />
+
+      <h3>Favourites</h3>
+      <FavouritesPanel
+        favourites={favourites}
+        openFolderPath={openFolderPath}
+        onOpenFolder={onOpenFolder}
+        onTogglePin={onTogglePin}
+        onDropPhoto={onDropPhoto}
+      />
+
+      <h3>Filter</h3>
+      <div className="star-filter">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            className={`star-filter__star${star <= filters.minStars ? " star-filter__star--active" : ""}`}
+            onClick={() => toggleMinStars(star)}
+            title={`${star}+ stars`}
+          >
+            <Star size={16} fill={star <= filters.minStars ? "currentColor" : "none"} />
+          </button>
+        ))}
+      </div>
+      <div className="pick-filter">
+        <button
+          type="button"
+          className={`pick-filter__btn${filters.pickState === "picked" ? " pick-filter__btn--active-pick" : ""}`}
+          onClick={() => togglePickState("picked")}
+        >
+          <Check size={14} /> Picked
+        </button>
+        <button
+          type="button"
+          className={`pick-filter__btn${filters.pickState === "unpicked" ? " pick-filter__btn--active" : ""}`}
+          onClick={() => togglePickState("unpicked")}
+        >
+          Unpicked
+        </button>
+        <button
+          type="button"
+          className={`pick-filter__btn${filters.pickState === "rejected" ? " pick-filter__btn--active-reject" : ""}`}
+          onClick={() => togglePickState("rejected")}
+        >
+          <X size={14} /> Rejected
+        </button>
+      </div>
+
+      <h3>Grouping</h3>
+      <label className="sidebar__slider">
+        Photo similarity: {similarityPercent}%
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={similarityPercent}
+          onChange={(e) => onSimilarityPercentChange(Number(e.target.value))}
+        />
+      </label>
+      <p className="sidebar__hint">
+        100% groups only near-identical frames; lower values group shots that are further apart in time or content.
+        Grouping applies automatically once a scan finishes - change the slider afterwards and click below to
+        re-group.
+      </p>
+      <button type="button" className="sidebar__apply" onClick={onUpdateGrouping}>
+        Update grouping
+      </button>
+      {groupingStale && <p className="sidebar__hint">Similarity changed - click Update grouping to refresh.</p>}
+
+      <h3>Shortcuts</h3>
+      <ul className="sidebar__shortcuts">
+        <li><kbd>↑</kbd>/<kbd>↓</kbd> next/prev photo or group</li>
+        <li><kbd>←</kbd>/<kbd>→</kbd> scroll similar shots</li>
+        <li><kbd>0</kbd>-<kbd>5</kbd> star rating</li>
+        <li><kbd>P</kbd> pick, <kbd>X</kbd> reject</li>
+      </ul>
+    </aside>
+  );
+}
