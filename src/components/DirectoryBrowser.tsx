@@ -1,26 +1,39 @@
-import { ArrowUp, FolderPlus, Home } from "lucide-react";
+import { ArrowUp, ChevronDown, Home } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createFolder, listDirectory } from "../api";
-import type { DirEntry } from "../types";
+import { listDirectory, listVolumes } from "../api";
+import type { DirEntry, Volume } from "../types";
 import FolderTreeNode from "./FolderTreeNode";
 
 interface Props {
   openFolderPath: string | null;
+  selectedPath: string | null;
+  onSelectFolder: (path: string) => void;
   onOpenFolder: (path: string) => void;
   onDropPhoto: (photoPaths: string[], destFolder: string) => void;
   favourites: string[];
   onTogglePin: (path: string) => void;
 }
 
-export default function DirectoryBrowser({ openFolderPath, onOpenFolder, onDropPhoto, favourites, onTogglePin }: Props) {
+export default function DirectoryBrowser({
+  openFolderPath,
+  selectedPath,
+  onSelectFolder,
+  onOpenFolder,
+  onDropPhoto,
+  favourites,
+  onTogglePin,
+}: Props) {
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [rootParent, setRootParent] = useState<string | null>(null);
   const [rootEntries, setRootEntries] = useState<DirEntry[]>([]);
   const [pathInput, setPathInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [creatingAtRoot, setCreatingAtRoot] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
   const [rootDragOver, setRootDragOver] = useState(false);
+  const [volumes, setVolumes] = useState<Volume[]>([]);
+
+  useEffect(() => {
+    void listVolumes().then(setVolumes);
+  }, []);
 
   async function goTo(path?: string) {
     try {
@@ -39,21 +52,9 @@ export default function DirectoryBrowser({ openFolderPath, onOpenFolder, onDropP
     void goTo();
   }, []);
 
-  async function submitNewRootFolder() {
-    const name = newFolderName.trim();
-    setCreatingAtRoot(false);
-    setNewFolderName("");
-    if (!name || !rootPath) return;
-    try {
-      await createFolder(rootPath, name);
-      await goTo(rootPath);
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
   function handleRootDrop(e: React.DragEvent) {
     e.preventDefault();
+    e.stopPropagation();
     setRootDragOver(false);
     if (!rootPath) return;
     const raw = e.dataTransfer.getData("text/plain");
@@ -75,9 +76,26 @@ export default function DirectoryBrowser({ openFolderPath, onOpenFolder, onDropP
         <button type="button" onClick={() => rootParent && goTo(rootParent)} disabled={!rootParent} title="Up one level">
           <ArrowUp size={14} />
         </button>
-        <button type="button" onClick={() => setCreatingAtRoot(true)} disabled={!rootPath} title="New folder here">
-          <FolderPlus size={14} /> Folder
-        </button>
+        {volumes.length > 1 && (
+          <div className="drives-select">
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) void goTo(e.target.value);
+              }}
+              title="Jump to a drive"
+            >
+              <option value="">Drives…</option>
+              {volumes.map((v) => (
+                <option key={v.path} value={v.path}>
+                  {v.name}
+                  {v.removable ? " (removable)" : ""}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="drives-select__chevron" />
+          </div>
+        )}
       </div>
       <form
         className="dir-browser__path-form"
@@ -99,29 +117,14 @@ export default function DirectoryBrowser({ openFolderPath, onOpenFolder, onDropP
         onDragLeave={() => setRootDragOver(false)}
         onDrop={handleRootDrop}
       >
-        {creatingAtRoot && (
-          <form
-            className="dir-row__new-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submitNewRootFolder();
-            }}
-          >
-            <input
-              autoFocus
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onBlur={() => setCreatingAtRoot(false)}
-              placeholder="Folder name"
-            />
-          </form>
-        )}
         {rootEntries.map((entry) => (
           <FolderTreeNode
             key={entry.path}
             entry={entry}
             depth={0}
             openFolderPath={openFolderPath}
+            selectedPath={selectedPath}
+            onSelectFolder={onSelectFolder}
             favourites={favourites}
             onOpenFolder={onOpenFolder}
             onDropPhoto={onDropPhoto}

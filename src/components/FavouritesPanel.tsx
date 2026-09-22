@@ -3,6 +3,8 @@ import FolderTreeNode from "./FolderTreeNode";
 interface Props {
   favourites: string[];
   openFolderPath: string | null;
+  selectedPath: string | null;
+  onSelectFolder: (path: string) => void;
   onOpenFolder: (path: string) => void;
   onDropPhoto: (photoPaths: string[], destFolder: string) => void;
   onTogglePin: (path: string) => void;
@@ -16,6 +18,8 @@ function basename(path: string): string {
 export default function FavouritesPanel({
   favourites,
   openFolderPath,
+  selectedPath,
+  onSelectFolder,
   onOpenFolder,
   onDropPhoto,
   onTogglePin,
@@ -34,6 +38,8 @@ export default function FavouritesPanel({
           entry={{ path, name: basename(path), hasChildren: true }}
           depth={0}
           openFolderPath={openFolderPath}
+          selectedPath={selectedPath}
+          onSelectFolder={onSelectFolder}
           favourites={favourites}
           onOpenFolder={onOpenFolder}
           onDropPhoto={onDropPhoto}

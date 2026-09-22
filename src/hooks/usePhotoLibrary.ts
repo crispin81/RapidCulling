@@ -22,6 +22,7 @@ export function usePhotoLibrary() {
   // similarity slider only takes effect when "Update grouping" is clicked.
   const [appliedGroups, setAppliedGroups] = useState<string[][] | null>(null);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [similarityPercent, setSimilarityPercent] = useState(DEFAULT_SIMILARITY_PERCENT);
   const [lastAppliedPercent, setLastAppliedPercent] = useState(DEFAULT_SIMILARITY_PERCENT);
   const unlistenRefs = useRef<Array<() => void>>([]);
@@ -56,7 +57,15 @@ export function usePhotoLibrary() {
       setAppliedGroups(null);
       setScanProgress({ done: 0, total: 0 });
       setLastAppliedPercent(similarityPercent);
-      await scanFolder(folder, similarityPercent);
+      try {
+        await scanFolder(folder, similarityPercent);
+      } catch (e) {
+        // Most commonly: a pinned folder on a drive that's since been
+        // unplugged/disconnected. Without this, the "Building thumbnails…"
+        // banner would just hang forever with no explanation.
+        setScanProgress(null);
+        setError(`Couldn't open ${folder}: ${e}`);
+      }
     },
     [similarityPercent],
   );
@@ -68,14 +77,32 @@ export function usePhotoLibrary() {
   }, []);
 
   const setRating = useCallback(async (path: string, rating: number) => {
+    const previous = photos[path]?.rating;
     setPhotos((prev) => (prev[path] ? { ...prev, [path]: { ...prev[path], rating } } : prev));
-    await apiSetRating(path, rating);
-  }, []);
+    try {
+      await apiSetRating(path, rating);
+    } catch (e) {
+      // Roll back the optimistic update - if the write failed, the UI must
+      // not keep showing a rating that was never actually saved to disk.
+      if (previous !== undefined) {
+        setPhotos((prev) => (prev[path] ? { ...prev, [path]: { ...prev[path], rating: previous } } : prev));
+      }
+      setError(`Couldn't save rating for ${path.split(/[\\/]/).pop()}: ${e}`);
+    }
+  }, [photos]);
 
   const setPick = useCallback(async (path: string, pick: boolean) => {
+    const previous = photos[path]?.pick;
     setPhotos((prev) => (prev[path] ? { ...prev, [path]: { ...prev[path], pick } } : prev));
-    await apiSetPick(path, pick);
-  }, []);
+    try {
+      await apiSetPick(path, pick);
+    } catch (e) {
+      if (previous !== undefined) {
+        setPhotos((prev) => (prev[path] ? { ...prev, [path]: { ...prev[path], pick: previous } } : prev));
+      }
+      setError(`Couldn't save pick for ${path.split(/[\\/]/).pop()}: ${e}`);
+    }
+  }, [photos]);
 
   const rejectPhoto = useCallback(
     (path: string) => {
@@ -106,16 +133,46 @@ export function usePhotoLibrary() {
 
   const moveGroupsOrPhotos = useCallback(
     async (paths: string[], destFolder: string) => {
-      await moveItems(paths, destFolder);
-      const movedSet = new Set(paths);
+      let result;
+      try {
+        result = await moveItems(paths, destFolder);
+      } catch (e) {
+        // The whole call rejected (e.g. dest_folder itself is gone) - nothing
+        // moved, so app state is still accurate. Just tell the user.
+        setError(`Move failed: ${e}`);
+        return;
+      }
+
+      // Only drop photos that were actually confirmed moved on disk - a
+      // partial-batch failure must not make the UI forget about photos that
+      // are still sitting right where they were.
+      const movedSet = new Set(result.moved);
       setPhotos((prev) => {
         const next = { ...prev };
-        for (const p of paths) delete next[p];
+        for (const p of result.moved) delete next[p];
         return next;
       });
       setAppliedGroups((prev) =>
         prev ? prev.map((g) => g.filter((p) => !movedSet.has(p))).filter((g) => g.length > 0) : prev,
       );
+
+      if (result.failed.length > 0) {
+        // Group by the actual OS error text so a batch failing for one
+        // reason (e.g. every file hitting the same cross-drive error)
+        // reads as one clear line instead of a wall of filenames with no
+        // explanation of what went wrong.
+        const byReason = new Map<string, string[]>();
+        for (const f of result.failed) {
+          const name = f.path.split(/[\\/]/).pop() ?? f.path;
+          const list = byReason.get(f.error);
+          if (list) list.push(name);
+          else byReason.set(f.error, [name]);
+        }
+        const summary = [...byReason.entries()]
+          .map(([reason, names]) => `${reason} (${names.join(", ")})`)
+          .join("; ");
+        setError(`${result.failed.length} of ${paths.length} photo(s) couldn't be moved: ${summary}`);
+      }
     },
     [],
   );
@@ -124,6 +181,8 @@ export function usePhotoLibrary() {
     photos,
     appliedGroups,
     scanProgress,
+    error,
+    clearError: () => setError(null),
     similarityPercent,
     setSimilarityPercent,
     groupingStale: similarityPercent !== lastAppliedPercent,

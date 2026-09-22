@@ -65,7 +65,12 @@ pub fn write(xmp_path: &Path, flags: RatingFlags) -> Result<(), String> {
         pick = flags.pick,
     );
 
-    std::fs::write(xmp_path, packet).map_err(|e| e.to_string())
+    // Write to a temp file in the same directory and rename it into place -
+    // rename is atomic, so a crash or power loss mid-write can never leave a
+    // truncated/corrupt sidecar behind, only the old content or the new.
+    let tmp_path = xmp_path.with_extension("xmp.tmp");
+    std::fs::write(&tmp_path, packet).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp_path, xmp_path).map_err(|e| e.to_string())
 }
 
 pub fn sidecar_path_for(raw_path: &Path) -> std::path::PathBuf {

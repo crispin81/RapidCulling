@@ -18,7 +18,11 @@ pub fn read(app: &tauri::AppHandle) -> Result<Vec<String>, String> {
 fn write(app: &tauri::AppHandle, favourites: &[String]) -> Result<(), String> {
     let path = favourites_path(app)?;
     let contents = serde_json::to_string_pretty(favourites).map_err(|e| e.to_string())?;
-    std::fs::write(&path, contents).map_err(|e| e.to_string())
+    // Write-then-rename so a crash mid-write can't leave favourites.json
+    // truncated - the file is always either the old list or the new one.
+    let tmp_path = path.with_extension("json.tmp");
+    std::fs::write(&tmp_path, contents).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp_path, &path).map_err(|e| e.to_string())
 }
 
 pub fn add(app: &tauri::AppHandle, folder: String) -> Result<Vec<String>, String> {

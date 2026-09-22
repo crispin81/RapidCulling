@@ -28,10 +28,26 @@ export interface DirEntry {
   hasChildren: boolean;
 }
 
+export interface Volume {
+  name: string;
+  path: string;
+  removable: boolean;
+}
+
 export interface DirListing {
   path: string;
   parent: string | null;
   entries: DirEntry[];
+}
+
+export interface MoveFailure {
+  path: string;
+  error: string;
+}
+
+export interface MoveResult {
+  moved: string[];
+  failed: MoveFailure[];
 }
 
 export interface FullPreview {
@@ -44,6 +60,6 @@ export interface FullPreview {
 export type PickFilterState = "any" | "picked" | "rejected" | "unpicked";
 
 export interface PhotoFilters {
-  minStars: number;
+  exactStars: number;
   pickState: PickFilterState;
 }

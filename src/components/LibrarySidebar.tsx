@@ -1,10 +1,18 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Check, Star, X } from "lucide-react";
+import { useState } from "react";
 import DirectoryBrowser from "./DirectoryBrowser";
 import FavouritesPanel from "./FavouritesPanel";
 import type { PhotoFilters, PickFilterState } from "../types";
 
+// TODO: swap for the real RapidCulling tutorial video URL before launch.
+const TUTORIAL_VIDEO_URL = "https://github.com/crispin81";
+const TUTORIAL_DISMISSED_KEY = "rapidculling.tutorialDismissed";
+
 interface Props {
   openFolderPath: string | null;
+  selectedPath: string | null;
+  onSelectFolder: (path: string) => void;
   onOpenFolder: (path: string) => void;
   onDropPhoto: (photoPaths: string[], destFolder: string) => void;
   favourites: string[];
@@ -19,6 +27,8 @@ interface Props {
 
 export default function LibrarySidebar({
   openFolderPath,
+  selectedPath,
+  onSelectFolder,
   onOpenFolder,
   onDropPhoto,
   favourites,
@@ -30,15 +40,56 @@ export default function LibrarySidebar({
   groupingStale,
   onUpdateGrouping,
 }: Props) {
-  function toggleMinStars(star: number) {
-    onFiltersChange({ ...filters, minStars: filters.minStars === star ? 0 : star });
+  const [tutorialDismissed, setTutorialDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(TUTORIAL_DISMISSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleExactStars(star: number) {
+    onFiltersChange({ ...filters, exactStars: filters.exactStars === star ? 0 : star });
   }
 
   function togglePickState(state: PickFilterState) {
     onFiltersChange({ ...filters, pickState: filters.pickState === state ? "any" : state });
   }
+
+  function dismissTutorial() {
+    setTutorialDismissed(true);
+    try {
+      localStorage.setItem(TUTORIAL_DISMISSED_KEY, "1");
+    } catch {
+      // localStorage unavailable - dismissal just won't persist across restarts.
+    }
+  }
+
   return (
     <aside className="sidebar">
+      {!tutorialDismissed && (
+        <div className="video-link">
+          <a
+            className="video-link__cta"
+            href={TUTORIAL_VIDEO_URL}
+            onClick={(e) => {
+              e.preventDefault();
+              openUrl(TUTORIAL_VIDEO_URL);
+            }}
+            title="Watch the tutorial video on YouTube"
+          >
+            ▶ New user? Watch this first!
+          </a>
+          <button
+            type="button"
+            className="video-link__close"
+            onClick={dismissTutorial}
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <h3>Library</h3>
       {openFolderPath && (
         <p className="sidebar__root" title={openFolderPath}>Culling: {openFolderPath}</p>
@@ -46,6 +97,8 @@ export default function LibrarySidebar({
       <p className="sidebar__hint">Double-click (or ⏵) a folder to cull it. Drag a photo onto a folder to move it there.</p>
       <DirectoryBrowser
         openFolderPath={openFolderPath}
+        selectedPath={selectedPath}
+        onSelectFolder={onSelectFolder}
         onOpenFolder={onOpenFolder}
         onDropPhoto={onDropPhoto}
         favourites={favourites}
@@ -56,6 +109,8 @@ export default function LibrarySidebar({
       <FavouritesPanel
         favourites={favourites}
         openFolderPath={openFolderPath}
+        selectedPath={selectedPath}
+        onSelectFolder={onSelectFolder}
         onOpenFolder={onOpenFolder}
         onTogglePin={onTogglePin}
         onDropPhoto={onDropPhoto}
@@ -67,11 +122,11 @@ export default function LibrarySidebar({
           <button
             key={star}
             type="button"
-            className={`star-filter__star${star <= filters.minStars ? " star-filter__star--active" : ""}`}
-            onClick={() => toggleMinStars(star)}
-            title={`${star}+ stars`}
+            className={`star-filter__star${star <= filters.exactStars ? " star-filter__star--active" : ""}`}
+            onClick={() => toggleExactStars(star)}
+            title={`${star} star${star === 1 ? "" : "s"} only`}
           >
-            <Star size={16} fill={star <= filters.minStars ? "currentColor" : "none"} />
+            <Star size={16} fill={star <= filters.exactStars ? "currentColor" : "none"} />
           </button>
         ))}
       </div>

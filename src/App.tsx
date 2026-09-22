@@ -1,6 +1,8 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Coffee, Image, Smile } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { addFavourite, listFavourites, removeFavourite } from "./api";
+import { addFavourite, listFavourites, listPhotoNames, removeFavourite } from "./api";
 import CullingView from "./components/CullingView";
 import LibrarySidebar from "./components/LibrarySidebar";
 import LoupePreview from "./components/LoupePreview";
@@ -8,10 +10,12 @@ import TitleBar from "./components/TitleBar";
 import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
 import type { PhotoFilters, PhotoInfo } from "./types";
 
-const DEFAULT_FILTERS: PhotoFilters = { minStars: 0, pickState: "any" };
+const DEFAULT_FILTERS: PhotoFilters = { exactStars: 0, pickState: "any" };
+
+const COFFEE_URL = "https://buymeacoffee.com/chriscorkphotography";
 
 function matchesFilters(filters: PhotoFilters, rating: number, pick: boolean): boolean {
-  if (filters.minStars > 0 && rating < filters.minStars) return false;
+  if (filters.exactStars > 0 && rating !== filters.exactStars) return false;
   switch (filters.pickState) {
     case "picked":
       return pick;
@@ -29,6 +33,8 @@ export default function App() {
     photos,
     appliedGroups,
     scanProgress,
+    error,
+    clearError,
     similarityPercent,
     setSimilarityPercent,
     groupingStale,
@@ -47,10 +53,36 @@ export default function App() {
   const [focus, setFocus] = useState({ groupIndex: 0, frameIndex: 0 });
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
+  // Which folder is highlighted in the tree - set on a single click, ahead
+  // of actually opening it for culling (rootFolder, set by double-click/▶).
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [previewNames, setPreviewNames] = useState<string[] | null>(null);
 
   useEffect(() => {
     void listFavourites().then(setFavourites);
   }, []);
+
+  // A quick, undecoded filename listing for the selected-but-not-yet-open
+  // folder, so clicking around the tree shows what's there instantly instead
+  // of a blank pane until you commit to a full scan.
+  useEffect(() => {
+    if (!selectedFolder || selectedFolder === rootFolder) {
+      setPreviewNames(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewNames(null);
+    listPhotoNames(selectedFolder)
+      .then((names) => {
+        if (!cancelled) setPreviewNames(names);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewNames([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFolder, rootFolder]);
 
   // While a scan is still streaming in (appliedGroups is null until
   // scan-complete), show every photo in its own row in capture order - lets
@@ -65,7 +97,7 @@ export default function App() {
   const groups = appliedGroups ?? naiveGroups;
 
   const filteredGroups = useMemo(() => {
-    if (filters.minStars === 0 && filters.pickState === "any") return groups;
+    if (filters.exactStars === 0 && filters.pickState === "any") return groups;
     return groups
       .map((paths) =>
         paths.filter((p) => {
@@ -268,9 +300,19 @@ export default function App() {
   return (
     <div className="app-shell">
       <TitleBar />
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button type="button" onClick={clearError} title="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
       <div className="app">
         <LibrarySidebar
           openFolderPath={rootFolder}
+          selectedPath={selectedFolder}
+          onSelectFolder={setSelectedFolder}
           onOpenFolder={handleOpenFolder}
           onDropPhoto={handleDropPhoto}
           favourites={favourites}
@@ -289,7 +331,7 @@ export default function App() {
           {scanProgress && (
             <div className="scan-progress">
               <span>
-                Scanning… {scanProgress.done}/{scanProgress.total || "?"}
+                Building thumbnails for a Rapid Cull… {scanProgress.done}/{scanProgress.total || "?"}
               </span>
               <div className="scan-progress__bar">
                 <div
@@ -302,29 +344,73 @@ export default function App() {
             </div>
           )}
 
-          {!rootFolder && (
-            <div className="app__empty">
-              <p>Open a folder of RAW files to start culling.</p>
-            </div>
-          )}
+          {selectedFolder && selectedFolder !== rootFolder ? (
+            previewNames ? (
+              previewNames.length === 0 ? (
+                <div className="app__empty">
+                  <p>No photos directly in this folder.</p>
+                </div>
+              ) : (
+                <div className="culling-view">
+                  {previewNames.map((name) => (
+                    <div key={name} className="group-row">
+                      <div className="group-row__scroller">
+                        <div className="thumb thumb--placeholder">
+                          <Image size={28} />
+                          <span>{name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="app__empty">
+                <p>Loading folder…</p>
+              </div>
+            )
+          ) : (
+            <>
+              {!rootFolder && (
+                <div className="app__empty">
+                  <p>Open a folder of RAW or JPEG files to start culling.</p>
+                </div>
+              )}
 
-          {rootFolder && filteredGroups.length === 0 && !scanProgress && (
-            <div className="app__empty">
-              <p>No photos match the current filter.</p>
-            </div>
-          )}
+              {rootFolder && filteredGroups.length === 0 && !scanProgress && (
+                <div className="app__empty">
+                  <p>No photos match the current filter.</p>
+                </div>
+              )}
 
-          <CullingView
-            groups={filteredGroups}
-            photos={photos}
-            focusedGroupIndex={focus.groupIndex}
-            focusedFrameIndex={focus.frameIndex}
-            selectedPaths={selectedPaths}
-            onFocusFrame={handleFocusFrame}
-            onClearSelection={() => setSelectedPaths(new Set())}
-          />
+              <CullingView
+                groups={filteredGroups}
+                photos={photos}
+                focusedGroupIndex={focus.groupIndex}
+                focusedFrameIndex={focus.frameIndex}
+                selectedPaths={selectedPaths}
+                onFocusFrame={handleFocusFrame}
+                onClearSelection={() => setSelectedPaths(new Set())}
+              />
+            </>
+          )}
         </main>
       </div>
+
+      <footer className="app-footer">
+        <span className="oss-note">RapidCulling is free and open-source software, licensed AGPL-3.0. Developed and maintained by Chris Cork Photography.</span>
+        <a
+          className="coffee-link"
+          href={COFFEE_URL}
+          onClick={(e) => {
+            e.preventDefault();
+            openUrl(COFFEE_URL);
+          }}
+          title="Buy Chris a coffee"
+        >
+          Feed Chris' coffee addiction <Smile size={13} color="#ffcc33" /> <Coffee size={13} color="#ffcc33" />
+        </a>
+      </footer>
     </div>
   );
 }

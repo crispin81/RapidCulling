@@ -12,12 +12,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(commands::AppState::default())
         .invoke_handler(tauri::generate_handler![
+            commands::list_photo_names,
             commands::scan_folder,
             commands::recompute_groups,
             commands::get_full_preview,
             commands::set_rating,
             commands::set_pick,
             commands::list_directory,
+            commands::list_volumes,
             commands::create_folder,
             commands::move_items,
             commands::list_favourites,

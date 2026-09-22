@@ -1,7 +1,7 @@
 use crate::grouping::{self, GroupInput};
 use crate::library;
 use crate::preview;
-use crate::types::{DirListing, FullPreview, PhotoInfo, ScanComplete, ScanProgress};
+use crate::types::{DirListing, FullPreview, MoveFailure, MoveResult, PhotoInfo, ScanComplete, ScanProgress};
 use crate::xmp::{self, RatingFlags};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -24,6 +24,20 @@ fn group_inputs_to_result(groups: Vec<Vec<String>>) -> ScanComplete {
         groups,
         failed_paths: Vec::new(),
     }
+}
+
+/// Just the filenames of the RAW photos directly in `folder`, with no
+/// decoding - fast enough to call the instant a folder is clicked in the
+/// tree, to show what's there before committing to a full scan.
+#[tauri::command]
+pub async fn list_photo_names(folder: String) -> Result<Vec<String>, String> {
+    let found = library::find_photos(Path::new(&folder))?;
+    let mut names: Vec<String> = found
+        .into_iter()
+        .filter_map(|p| p.raw_path.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .collect();
+    names.sort();
+    Ok(names)
 }
 
 #[tauri::command]
@@ -137,6 +151,10 @@ pub async fn get_full_preview(path: String) -> Result<FullPreview, String> {
         .map(|ext| raw_path.with_extension(ext))
         .find(|p| p.is_file());
 
+    // A JPEG (like a RAW) always gets decoded and capped at
+    // FULL_PREVIEW_MAX_DIM here, regardless of the source file's actual
+    // resolution (a 100-megapixel JPEG is not sent to the frontend at full
+    // size - same bounded cost as any other photo).
     let extracted = preview::extract_source_image(&raw_path, jpeg_candidate.as_deref())?;
     let (image_base64, width, height) =
         preview::make_thumb_base64(&extracted.image, extracted.orientation, FULL_PREVIEW_MAX_DIM)?;
@@ -176,6 +194,58 @@ pub async fn list_directory(path: Option<String>) -> Result<DirListing, String> 
     library::list_directory(&dir)
 }
 
+/// Every mounted disk/volume on the system - internal drives, external
+/// drives, USB sticks - so users working off a second/external drive can
+/// jump straight to it instead of typing a path by hand.
+#[tauri::command]
+pub async fn list_volumes() -> Vec<crate::types::Volume> {
+    // Mount points under these are internal OS/system paths (or, on Linux,
+    // often just other subvolumes of the same root disk) - never somewhere
+    // a photographer's library would actually live.
+    const SYSTEM_PREFIXES: &[&str] =
+        &["/boot", "/var", "/usr", "/etc", "/tmp", "/run", "/snap", "/nix", "/proc", "/sys", "/dev"];
+
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+    // A single physical disk (especially with Linux subvolumes/bind mounts,
+    // e.g. btrfs @, @home, @log, @pkg all on one device) can show up as
+    // several separate mount points here - collapse those down to one entry
+    // (the shallowest mount point) so the same drive isn't listed 4 times.
+    let mut by_device: std::collections::HashMap<String, (PathBuf, bool)> = std::collections::HashMap::new();
+    for d in disks.iter() {
+        if d.total_space() <= 1_000_000_000 {
+            continue;
+        }
+        let mount = d.mount_point();
+        let mount_str = mount.to_string_lossy();
+        if SYSTEM_PREFIXES.iter().any(|p| mount_str == *p || mount_str.starts_with(&format!("{p}/"))) {
+            continue;
+        }
+        let device = d.name().to_string_lossy().into_owned();
+        by_device
+            .entry(device)
+            .and_modify(|(existing, _)| {
+                if mount.components().count() < existing.components().count() {
+                    *existing = mount.to_path_buf();
+                }
+            })
+            .or_insert_with(|| (mount.to_path_buf(), d.is_removable()));
+    }
+
+    let mut volumes: Vec<crate::types::Volume> = by_device
+        .into_values()
+        .map(|(path, removable)| {
+            let path_str = path.to_string_lossy().into_owned();
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| if path_str == "/" { "This PC".to_string() } else { path_str.clone() });
+            crate::types::Volume { name, path: path_str, removable }
+        })
+        .collect();
+    volumes.sort_by(|a, b| b.removable.cmp(&a.removable).then_with(|| a.name.cmp(&b.name)));
+    volumes
+}
+
 #[tauri::command]
 pub async fn create_folder(parent: String, name: String) -> Result<String, String> {
     library::create_folder(Path::new(&parent), &name)
@@ -201,14 +271,23 @@ pub async fn move_items(
     state: State<'_, AppState>,
     paths: Vec<String>,
     dest_folder: String,
-) -> Result<(), String> {
+) -> Result<MoveResult, String> {
     let dest = Path::new(&dest_folder);
+    // Keep going on a per-item failure rather than aborting the whole batch -
+    // one locked/cross-drive/permission-denied file must not strand the
+    // photos before it in limbo (moved on disk but never reflected in state
+    // because an early return skipped the bookkeeping below).
+    let mut moved = Vec::new();
+    let mut failed = Vec::new();
     for path in &paths {
-        library::move_photo(Path::new(path), dest)?;
+        match library::move_photo(Path::new(path), dest) {
+            Ok(()) => moved.push(path.clone()),
+            Err(error) => failed.push(MoveFailure { path: path.clone(), error }),
+        }
     }
 
-    let moved: std::collections::HashSet<&str> = paths.iter().map(|s| s.as_str()).collect();
-    state.last_scan.lock().unwrap().retain(|p| !moved.contains(p.path.as_str()));
+    let moved_set: std::collections::HashSet<&str> = moved.iter().map(|s| s.as_str()).collect();
+    state.last_scan.lock().unwrap().retain(|p| !moved_set.contains(p.path.as_str()));
 
-    Ok(())
+    Ok(MoveResult { moved, failed })
 }

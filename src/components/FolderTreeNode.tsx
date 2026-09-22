@@ -7,6 +7,8 @@ interface Props {
   entry: DirEntry;
   depth: number;
   openFolderPath: string | null;
+  selectedPath: string | null;
+  onSelectFolder: (path: string) => void;
   favourites: string[];
   onOpenFolder: (path: string) => void;
   onDropPhoto: (photoPaths: string[], destFolder: string) => void;
@@ -22,6 +24,8 @@ export default function FolderTreeNode({
   entry,
   depth,
   openFolderPath,
+  selectedPath,
+  onSelectFolder,
   favourites,
   onOpenFolder,
   onDropPhoto,
@@ -37,16 +41,20 @@ export default function FolderTreeNode({
   const [error, setError] = useState<string | null>(null);
 
   const isOpen = openFolderPath === entry.path;
+  const isSelected = selectedPath === entry.path;
   const isPinned = favourites.includes(entry.path);
 
   async function toggleExpand() {
+    onSelectFolder(entry.path);
     if (!expanded && children === null) {
       setLoading(true);
       try {
         const listing = await listDirectory(entry.path);
         setChildren(listing.entries);
-      } catch {
+        setError(null);
+      } catch (e) {
         setChildren([]);
+        setError(String(e));
       } finally {
         setLoading(false);
       }
@@ -80,6 +88,12 @@ export default function FolderTreeNode({
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
+    // Without this, the drop event bubbles up through the tree's ancestor
+    // elements to the root drop zone, which ALSO handles it - silently
+    // firing a second, unintended move of the same photos to whatever
+    // folder the browser root happens to be showing. One drop must mean
+    // exactly one move.
+    e.stopPropagation();
     setDragOver(false);
     const raw = e.dataTransfer.getData("text/plain");
     if (!raw) return;
@@ -94,10 +108,11 @@ export default function FolderTreeNode({
   return (
     <div>
       <div
-        className={`dir-row${isOpen ? " dir-row--open" : ""}${dragOver ? " dir-row--dragover" : ""}`}
+        className={`dir-row${isOpen || isSelected ? " dir-row--open" : ""}${dragOver ? " dir-row--dragover" : ""}`}
         style={{ paddingLeft: depth * 14 }}
         onDragOver={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
@@ -109,7 +124,10 @@ export default function FolderTreeNode({
         <span
           className="dir-row__name"
           onClick={toggleExpand}
-          onDoubleClick={() => onOpenFolder(entry.path)}
+          onDoubleClick={() => {
+            onSelectFolder(entry.path);
+            onOpenFolder(entry.path);
+          }}
           title="Click to expand, double-click to open for culling, drag a photo here to move it"
         >
           {expanded ? (
@@ -122,7 +140,10 @@ export default function FolderTreeNode({
         <button
           type="button"
           className="dir-row__open"
-          onClick={() => onOpenFolder(entry.path)}
+          onClick={() => {
+            onSelectFolder(entry.path);
+            onOpenFolder(entry.path);
+          }}
           title="Open this folder for culling"
         >
           ⏵
@@ -174,6 +195,8 @@ export default function FolderTreeNode({
             entry={child}
             depth={depth + 1}
             openFolderPath={openFolderPath}
+            selectedPath={selectedPath}
+            onSelectFolder={onSelectFolder}
             favourites={favourites}
             onOpenFolder={onOpenFolder}
             onDropPhoto={onDropPhoto}

@@ -32,6 +32,14 @@ pub struct ScanComplete {
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct Volume {
+    pub name: String,
+    pub path: String,
+    pub removable: bool,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DirEntry {
     pub path: String,
     pub name: String,
@@ -44,6 +52,20 @@ pub struct DirListing {
     pub path: String,
     pub parent: Option<String>,
     pub entries: Vec<DirEntry>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveFailure {
+    pub path: String,
+    pub error: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveResult {
+    pub moved: Vec<String>,
+    pub failed: Vec<MoveFailure>,
 }
 
 #[derive(Serialize, Clone)]

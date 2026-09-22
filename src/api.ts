@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { DirListing, FullPreview, PhotoInfo, ScanComplete, ScanProgress } from "./types";
+import type { DirListing, FullPreview, MoveResult, PhotoInfo, ScanComplete, ScanProgress, Volume } from "./types";
 
 export function scanFolder(folder: string, similarityPercent: number): Promise<ScanComplete> {
   return invoke("scan_folder", { folder, similarityPercent });
@@ -26,11 +26,19 @@ export function listDirectory(path?: string): Promise<DirListing> {
   return invoke("list_directory", { path: path ?? null });
 }
 
+export function listVolumes(): Promise<Volume[]> {
+  return invoke("list_volumes");
+}
+
+export function listPhotoNames(folder: string): Promise<string[]> {
+  return invoke("list_photo_names", { folder });
+}
+
 export function createFolder(parent: string, name: string): Promise<string> {
   return invoke("create_folder", { parent, name });
 }
 
-export function moveItems(paths: string[], destFolder: string): Promise<void> {
+export function moveItems(paths: string[], destFolder: string): Promise<MoveResult> {
   return invoke("move_items", { paths, destFolder });
 }
 
