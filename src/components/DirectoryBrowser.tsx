@@ -61,7 +61,15 @@ export default function DirectoryBrowser({
     // never does, which is why protected folders (Desktop, Documents...)
     // can otherwise re-prompt on every touch.
     const picked = await openNativeFolderPicker({ directory: true, multiple: false });
-    if (typeof picked === "string") void goTo(picked);
+    if (typeof picked === "string") {
+      void goTo(picked);
+      // Actually open it for culling too - not just navigate the tree
+      // there. A folder full of photos (the normal case) has no
+      // subfolders of its own, so without this the tree pane would show
+      // nothing after picking, looking broken.
+      onSelectFolder(picked);
+      onOpenFolder(picked);
+    }
   }
 
   function handleRootDrop(e: React.DragEvent) {
