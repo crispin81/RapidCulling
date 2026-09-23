@@ -21,13 +21,17 @@ publisher is unverified on first launch. That's expected for unsigned
 beta software, not a sign anything's wrong:
 
 - **macOS**: [Direct download (.dmg, Apple Silicon + Intel)](https://github.com/crispin81/RapidCulling/releases/download/v1.0.0-beta/RapidCulling_1.0.0_universal.dmg).
-  Open the `.dmg`, drag `RapidCulling.app` into Applications.
-  Gatekeeper will refuse to open it the first time — either right-click
-  (Control-click) the app and choose **Open**, then confirm, or run this
-  once in Terminal:
-  ```
-  xattr -d com.apple.quarantine /Applications/RapidCulling.app
-  ```
+  Open the `.dmg`, drag `RapidCulling.app` into Applications. Gatekeeper
+  will refuse to open it the first time — recent macOS versions no longer
+  reliably let you bypass this with right-click → Open, so use one of
+  these instead:
+  - **Terminal** (quickest): run this once, then launch normally:
+    ```
+    xattr -d com.apple.quarantine /Applications/RapidCulling.app
+    ```
+  - **System Settings**: try to open the app once (it'll be blocked),
+    then go to **System Settings → Privacy & Security**, scroll down to
+    the security notice about RapidCulling, and click **Open Anyway**.
 - **Windows**: [Direct download (.msi installer)](https://github.com/crispin81/RapidCulling/releases/download/v1.0.0-beta/RapidCulling_1.0.0_x64_en-US.msi).
   Run the `.msi` or `.exe`. SmartScreen will show "Windows
   protected your PC" — click **More info**, then **Run anyway**.
