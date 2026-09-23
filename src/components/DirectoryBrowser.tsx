@@ -1,4 +1,5 @@
-import { ArrowUp, ChevronDown, Home } from "lucide-react";
+import { open as openNativeFolderPicker } from "@tauri-apps/plugin-dialog";
+import { ArrowUp, ChevronDown, FolderOpen, Home } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listDirectory, listVolumes } from "../api";
 import type { DirEntry, Volume } from "../types";
@@ -52,6 +53,17 @@ export default function DirectoryBrowser({
     void goTo();
   }, []);
 
+  async function handleNativeOpen() {
+    // Going through the OS's own folder picker (rather than only ever
+    // navigating via our in-app tree) matters most on macOS: picking a
+    // folder this way is what grants a persistent, non-repeating
+    // permission for it - browsing there purely via our own custom tree
+    // never does, which is why protected folders (Desktop, Documents...)
+    // can otherwise re-prompt on every touch.
+    const picked = await openNativeFolderPicker({ directory: true, multiple: false });
+    if (typeof picked === "string") void goTo(picked);
+  }
+
   function handleRootDrop(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
@@ -75,6 +87,9 @@ export default function DirectoryBrowser({
         </button>
         <button type="button" onClick={() => rootParent && goTo(rootParent)} disabled={!rootParent} title="Up one level">
           <ArrowUp size={14} />
+        </button>
+        <button type="button" onClick={handleNativeOpen} title="Open Folder… (recommended on macOS - grants persistent access)">
+          <FolderOpen size={14} />
         </button>
         {volumes.length > 1 && (
           <div className="drives-select">
