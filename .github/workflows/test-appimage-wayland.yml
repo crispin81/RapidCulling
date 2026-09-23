@@ -1,10 +1,5 @@
 name: test-appimage-wayland
 
-# Ad-hoc test build only — NOT wired into release.yml or build-linux.yml.
-# Builds the AppImage with a patched linuxdeploy-plugin-gtk.sh hook
-# (GDK_BACKEND=wayland,x11 instead of the hardcoded x11) to test whether it
-# fixes native-Wayland rendering, without touching the public release assets.
-
 on:
   workflow_dispatch:
 
