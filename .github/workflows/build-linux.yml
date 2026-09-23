@@ -23,12 +23,7 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
-      # TEMPORARY: testing a patched linuxdeploy-plugin-gtk.sh hook
-      # (GDK_BACKEND=wayland,x11 instead of the hardcoded x11) to fix
-      # AppImage rendering on native Wayland (tauri-apps/tauri#8541).
-      # This job only uploads a workflow artifact, never the public
-      # release, so it's safe to test here. Revert once confirmed.
-      - name: install patched linuxdeploy gtk hook (WAYLAND TEST)
+      - name: install patched linuxdeploy gtk hook (native Wayland fix)
         run: |
           mkdir -p ~/.cache/tauri
           cp .github/appimage/linuxdeploy-plugin-gtk.sh ~/.cache/tauri/linuxdeploy-plugin-gtk.sh
