@@ -1,3 +1,52 @@
+/* Bundled locally rather than fetched from Google Fonts at runtime - a
+   desktop app shouldn't depend on a live network connection just to render
+   its own UI text correctly. Font-metric fallback (system sans-serif in
+   place of Poppins) when that fetch fails/is slow is also why the packaged
+   app could look subtly larger/differently-spaced than it does in dev,
+   where the fetch reliably succeeds. */
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-300.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-400-italic.woff2") format("woff2");
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
