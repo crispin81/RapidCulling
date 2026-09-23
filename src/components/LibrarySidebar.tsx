@@ -5,8 +5,7 @@ import DirectoryBrowser from "./DirectoryBrowser";
 import FavouritesPanel from "./FavouritesPanel";
 import type { PhotoFilters, PickFilterState } from "../types";
 
-// TODO: swap for the real RapidCulling tutorial video URL before launch.
-const TUTORIAL_VIDEO_URL = "https://github.com/crispin81";
+const TUTORIAL_VIDEO_URL = "https://youtu.be/23gWnhcKoW8";
 const TUTORIAL_DISMISSED_KEY = "rapidculling.tutorialDismissed";
 
 interface Props {

@@ -6,6 +6,8 @@ single keystrokes, and drag finished shots straight into a folder — all in
 a native desktop app (Tauri: Rust backend, React/TypeScript UI), no separate
 runtime to install.
 
+📺 [Video walkthrough](https://youtu.be/23gWnhcKoW8)
+
 Free and open-source, licensed [AGPL-3.0](LICENSE).
 
 ## Installing
