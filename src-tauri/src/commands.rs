@@ -252,7 +252,13 @@ pub async fn list_volumes() -> Vec<crate::types::Volume> {
             let name = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| if path_str == "/" { "This PC".to_string() } else { path_str.clone() });
+                .unwrap_or_else(|| {
+                    if path_str == "/" {
+                        if cfg!(target_os = "macos") { "This Mac" } else { "This PC" }.to_string()
+                    } else {
+                        path_str.clone()
+                    }
+                });
             crate::types::Volume { name, path: path_str, removable }
         })
         .collect();
