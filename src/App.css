@@ -1,5 +1,30 @@
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3b45 transparent;
+}
+
+/* Chromium (Windows' WebView2) and WebKit (Linux/macOS) both support this
+   legacy pseudo-element API, so this alone covers every platform Tauri
+   targets - a themed scrollbar instead of each OS's own default chrome. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #3a3b45;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #ffcc33;
 }
 
 button, input, select {
