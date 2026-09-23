@@ -224,8 +224,44 @@ body {
   color: #b7b8c2;
 }
 
+/* Custom-styled rather than left to accent-color + the native OS slider
+   widget - those render inconsistently across platforms (notably: a stray
+   stroke and a squashed, non-circular thumb on macOS's WKWebView). This
+   renders identically everywhere. Background (the gold/grey fill split) is
+   set inline per the current value - see LibrarySidebar.tsx. */
 .sidebar__slider input[type="range"] {
-  accent-color: #ffcc33;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.sidebar__slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+.sidebar__slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+}
+
+.sidebar__slider input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: transparent;
 }
 
 .star-filter {

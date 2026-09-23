@@ -164,6 +164,7 @@ export default function LibrarySidebar({
           step={1}
           value={similarityPercent}
           onChange={(e) => onSimilarityPercentChange(Number(e.target.value))}
+          style={{ background: `linear-gradient(to right, #ffcc33 ${similarityPercent}%, #33343e ${similarityPercent}%)` }}
         />
       </label>
       <p className="sidebar__hint">
