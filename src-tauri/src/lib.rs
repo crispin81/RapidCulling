@@ -27,6 +27,7 @@ pub fn run() {
             commands::list_favourites,
             commands::add_favourite,
             commands::remove_favourite,
+            commands::open_full_disk_access,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -69,3 +69,7 @@ export function onScanProgress(handler: (progress: ScanProgress) => void): Promi
 export function onScanComplete(handler: (result: ScanComplete) => void): Promise<UnlistenFn> {
   return listen<ScanComplete>("scan-complete", (event) => handler(event.payload));
 }
+
+export function openFullDiskAccess(): Promise<void> {
+  return invoke("open_full_disk_access");
+}

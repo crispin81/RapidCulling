@@ -931,3 +931,106 @@ body {
 .coffee-link:hover {
   text-decoration: underline;
 }
+
+/* First-launch macOS access dialog */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modal {
+  width: 440px;
+  max-width: calc(100vw - 40px);
+  padding: 24px;
+  background: #1b1c22;
+  border: 1px solid #2a2b33;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  color: #d8d9de;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal__icon {
+  margin-bottom: 10px;
+}
+
+.modal__title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.modal__text,
+.modal__note {
+  margin: 0 0 12px;
+}
+
+.modal__note {
+  font-size: 12px;
+  color: #8b8d98;
+}
+
+.modal__steps {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.modal__steps li {
+  margin-bottom: 4px;
+}
+
+.modal__steps strong {
+  color: #ffcc33;
+  font-weight: 500;
+}
+
+.modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.modal__btn {
+  padding: 7px 14px;
+  background: #26272f;
+  border: 1px solid #2a2b33;
+  border-radius: 6px;
+  color: #d8d9de;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modal__btn:hover {
+  border-color: #ffcc33;
+}
+
+.modal__btn:focus-visible {
+  outline: 2px solid #ffcc33;
+}
+
+.modal__btn--primary {
+  background: #ffcc33;
+  border-color: #ffcc33;
+  color: #1b1c22;
+  font-weight: 600;
+}
+
+.modal__btn--primary:hover {
+  background: #ffd863;
+}
+
+.modal__btn--quiet {
+  margin-left: auto;
+  background: none;
+  border-color: transparent;
+  color: #8b8d98;
+}

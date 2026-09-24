@@ -14,6 +14,17 @@ use tauri::{Emitter, State};
 const GRID_THUMB_MAX_DIM: u32 = 960;
 const FULL_PREVIEW_MAX_DIM: u32 = 2400;
 
+/// Serializes directory enumeration. On macOS the first touch of a protected
+/// location (external volume, Desktop...) raises a permission prompt, and a
+/// folder click fires several listings at once - unserialized, each one
+/// raises its own prompt. Queued behind the first, the rest just succeed
+/// once it's answered.
+static FS_GATE: Mutex<()> = Mutex::new(());
+
+fn fs_gate() -> std::sync::MutexGuard<'static, ()> {
+    FS_GATE.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 #[derive(Default)]
 pub struct AppState {
     pub last_scan: Mutex<Vec<GroupInput>>,
@@ -31,7 +42,10 @@ fn group_inputs_to_result(groups: Vec<Vec<String>>) -> ScanComplete {
 /// tree, to show what's there before committing to a full scan.
 #[tauri::command]
 pub async fn list_photo_names(folder: String) -> Result<Vec<String>, String> {
-    let found = library::find_photos(Path::new(&folder))?;
+    let found = {
+        let _gate = fs_gate();
+        library::find_photos(Path::new(&folder))?
+    };
     let mut names: Vec<String> = found
         .into_iter()
         .filter_map(|p| p.raw_path.file_name().map(|n| n.to_string_lossy().into_owned()))
@@ -47,7 +61,10 @@ pub async fn scan_folder(
     folder: String,
     similarity_percent: f64,
 ) -> Result<ScanComplete, String> {
-    let found = library::find_photos(Path::new(&folder))?;
+    let found = {
+        let _gate = fs_gate();
+        library::find_photos(Path::new(&folder))?
+    };
     let total = found.len();
     let _ = app.emit("scan-progress", ScanProgress { done: 0, total });
 
@@ -205,6 +222,7 @@ pub async fn list_directory(path: Option<String>) -> Result<DirListing, String> 
         Some(p) => PathBuf::from(p),
         None => dirs::home_dir().ok_or_else(|| "could not determine home directory".to_string())?,
     };
+    let _gate = fs_gate();
     library::list_directory(&dir)
 }
 
@@ -310,4 +328,19 @@ pub async fn move_items(
     state.last_scan.lock().unwrap().retain(|p| !moved_set.contains(p.path.as_str()));
 
     Ok(MoveResult { moved, failed })
+}
+
+/// Opens System Settings at Privacy & Security -> Full Disk Access (macOS
+/// only; a no-op elsewhere). Full Disk Access can't be granted from inside
+/// the app - the user has to flip the switch themselves.
+#[tauri::command]
+pub async fn open_full_disk_access() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
