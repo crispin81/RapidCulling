@@ -51,6 +51,7 @@ export default function FolderTreeNode({
       try {
         const listing = await listDirectory(entry.path);
         setChildren(listing.entries);
+        setHasChildren(listing.entries.length > 0);
         setError(null);
       } catch (e) {
         setChildren([]);

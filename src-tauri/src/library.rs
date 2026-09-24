@@ -81,6 +81,13 @@ fn is_hidden(path: &Path) -> bool {
 }
 
 fn has_subdirectories(dir: &Path) -> bool {
+    // Peeking inside every child folder is what fires a wall of macOS
+    // permission prompts (Desktop, Documents, Downloads, each drive...) the
+    // moment a parent is listed. On macOS, assume a chevron and let the
+    // tree node correct itself when the user actually expands it.
+    if cfg!(target_os = "macos") {
+        return true;
+    }
     std::fs::read_dir(dir)
         .map(|entries| {
             entries

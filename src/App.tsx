@@ -5,7 +5,6 @@ import "./App.css";
 import { addFavourite, listFavourites, listPhotoNames, removeFavourite } from "./api";
 import CullingView from "./components/CullingView";
 import LibrarySidebar from "./components/LibrarySidebar";
-import MacAccessDialog from "./components/MacAccessDialog";
 import LoupePreview from "./components/LoupePreview";
 import TitleBar from "./components/TitleBar";
 import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
@@ -409,7 +408,6 @@ export default function App() {
           Feed Chris' coffee addiction <Smile size={13} color="#ffcc33" /> <Coffee size={13} color="#ffcc33" />
         </a>
       </footer>
-      <MacAccessDialog />
     </div>
   );
 }

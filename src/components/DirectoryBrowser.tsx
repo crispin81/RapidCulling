@@ -15,6 +15,10 @@ interface Props {
   onTogglePin: (path: string) => void;
 }
 
+// On macOS every in-app folder listing can trigger a permission prompt, so
+// the only way in is the OS's own folder picker, which grants access once.
+const IS_MAC = /Mac/i.test(navigator.userAgent);
+
 export default function DirectoryBrowser({
   openFolderPath,
   selectedPath,
@@ -33,7 +37,7 @@ export default function DirectoryBrowser({
   const [volumes, setVolumes] = useState<Volume[]>([]);
 
   useEffect(() => {
-    void listVolumes().then(setVolumes);
+    if (!IS_MAC) void listVolumes().then(setVolumes);
   }, []);
 
   async function goTo(path?: string) {
@@ -50,7 +54,7 @@ export default function DirectoryBrowser({
   }
 
   useEffect(() => {
-    void goTo();
+    if (!IS_MAC) void goTo();
   }, []);
 
   async function handleNativeOpen() {
@@ -89,6 +93,14 @@ export default function DirectoryBrowser({
 
   return (
     <div className="dir-browser">
+      {IS_MAC ? (
+        <div className="dir-browser__pathbar">
+          <button type="button" onClick={handleNativeOpen} title="Choose a folder to cull">
+            <FolderOpen size={14} /> Open Folder…
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="dir-browser__pathbar">
         <button type="button" onClick={() => goTo()} title="Home">
           <Home size={14} />
@@ -129,6 +141,8 @@ export default function DirectoryBrowser({
       >
         <input value={pathInput} onChange={(e) => setPathInput(e.target.value)} placeholder="/path/to/photos" />
       </form>
+        </>
+      )}
       {error && <p className="dir-browser__error">{error}</p>}
 
       <div
@@ -140,7 +154,12 @@ export default function DirectoryBrowser({
         onDragLeave={() => setRootDragOver(false)}
         onDrop={handleRootDrop}
       >
-        {rootEntries.map((entry) => (
+        {(IS_MAC
+          ? rootPath
+            ? [{ path: rootPath, name: rootPath.split("/").filter(Boolean).pop() ?? rootPath, hasChildren: true }]
+            : []
+          : rootEntries
+        ).map((entry) => (
           <FolderTreeNode
             key={entry.path}
             entry={entry}
