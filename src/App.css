@@ -565,6 +565,7 @@ body {
 
 .dir-row__open,
 .dir-row__pin,
+.dir-row__remove,
 .dir-row__add {
   display: inline-flex;
   align-items: center;
@@ -583,6 +584,7 @@ body {
 }
 
 .dir-row__pin:hover,
+.dir-row__remove:hover,
 .dir-row__add:hover {
   color: #e8e8ec;
 }

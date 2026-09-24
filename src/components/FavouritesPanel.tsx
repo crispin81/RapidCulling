@@ -44,6 +44,7 @@ export default function FavouritesPanel({
           onOpenFolder={onOpenFolder}
           onDropPhoto={onDropPhoto}
           onTogglePin={onTogglePin}
+          onRemoveFavourite={onTogglePin}
         />
       ))}
     </div>

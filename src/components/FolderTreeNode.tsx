@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Folder, FolderOpen, FolderPlus, Star } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FolderOpen, FolderPlus, Minus, Star } from "lucide-react";
 import { useState } from "react";
 import { createFolder, listDirectory } from "../api";
 import type { DirEntry } from "../types";
@@ -13,6 +13,8 @@ interface Props {
   onOpenFolder: (path: string) => void;
   onDropPhoto: (photoPaths: string[], destFolder: string) => void;
   onTogglePin: (path: string) => void;
+  /// When set (favourites top level only), shows a minus button that removes this row from favourites.
+  onRemoveFavourite?: (path: string) => void;
 }
 
 /// A single folder row that can expand to fetch and show its own
@@ -30,11 +32,11 @@ export default function FolderTreeNode({
   onOpenFolder,
   onDropPhoto,
   onTogglePin,
+  onRemoveFavourite,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [children, setChildren] = useState<DirEntry[] | null>(null);
-  const [hasChildren, setHasChildren] = useState(entry.hasChildren);
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -51,7 +53,6 @@ export default function FolderTreeNode({
       try {
         const listing = await listDirectory(entry.path);
         setChildren(listing.entries);
-        setHasChildren(listing.entries.length > 0);
         setError(null);
       } catch (e) {
         setChildren([]);
@@ -79,7 +80,6 @@ export default function FolderTreeNode({
     if (!name) return;
     try {
       await createFolder(entry.path, name);
-      setHasChildren(true);
       setExpanded(true);
       await refreshChildren();
     } catch (e) {
@@ -119,8 +119,9 @@ export default function FolderTreeNode({
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <span className="dir-row__chevron" onClick={() => hasChildren && toggleExpand()}>
-          {hasChildren ? expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} /> : null}
+        <span className="dir-row__chevron" onClick={toggleExpand}>
+          {/* Always shown: hiding it after an empty folder loads made the arrow vanish on click. */}
+          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </span>
         <span
           className="dir-row__name"
@@ -157,6 +158,16 @@ export default function FolderTreeNode({
         >
           <Star size={13} fill={isPinned ? "currentColor" : "none"} />
         </button>
+        {onRemoveFavourite && (
+          <button
+            type="button"
+            className="dir-row__remove"
+            onClick={() => onRemoveFavourite(entry.path)}
+            title="Remove from favourites"
+          >
+            <Minus size={13} />
+          </button>
+        )}
         <button type="button" className="dir-row__add" onClick={() => setCreating(true)} title="New subfolder">
           <FolderPlus size={13} />
         </button>
