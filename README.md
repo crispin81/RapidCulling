@@ -6,6 +6,8 @@ single keystrokes, and drag finished shots straight into a folder — all in
 a native desktop app (Tauri: Rust backend, React/TypeScript UI), no separate
 runtime to install.
 
+Part of a family of apps by Chris Cork Photography, alongside RapidRetouch and RapidTimelapse.
+
 **New to RapidCulling? Watch the tutorial:**
 
 [![RapidCulling tutorial video](docs/tutorial-thumbnail.jpg)](https://youtu.be/23gWnhcKoW8)
