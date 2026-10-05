@@ -6,7 +6,11 @@ single keystrokes, and drag finished shots straight into a folder — all in
 a native desktop app (Tauri: Rust backend, React/TypeScript UI), no separate
 runtime to install.
 
-📺 [Video walkthrough](https://youtu.be/23gWnhcKoW8)
+**New to RapidCulling? Watch the tutorial:**
+
+[![RapidCulling tutorial video](docs/tutorial-thumbnail.jpg)](https://youtu.be/23gWnhcKoW8)
+
+**[⬇ Download the latest version](https://github.com/crispin81/RapidCulling/releases/latest)**
 
 Free and open-source, licensed [AGPL-3.0](LICENSE).
 
